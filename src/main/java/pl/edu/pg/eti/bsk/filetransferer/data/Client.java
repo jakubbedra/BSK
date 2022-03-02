@@ -16,7 +16,7 @@ public class Client implements Runnable {
     private String ip;
     private int port;
 
-    public Client(String ip, int port){
+    public Client(String ip, int port) {
         this.ip = ip;
         this.port = port;
     }
@@ -26,6 +26,7 @@ public class Client implements Runnable {
             clientSocket = new Socket(ip, port);
             out = new PrintWriter(clientSocket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            System.out.println("Client successfully connected to: " + ip + ":" + port);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -36,6 +37,7 @@ public class Client implements Runnable {
             in.close();
             out.close();
             clientSocket.close();
+            System.out.println("Connection to: " + ip + ":" + port + " was closed.");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -55,7 +57,7 @@ public class Client implements Runnable {
     @Override
     public void run() {
         startConnection();
-        while(!Thread.interrupted()){
+        while (!Thread.interrupted()) {
             Scanner scanner = new Scanner(System.in);
             sendTestMessage(scanner.nextLine());
         }

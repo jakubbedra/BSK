@@ -26,6 +26,7 @@ public class Server implements Runnable {
             clientSocket = serverSocket.accept();
             out = new PrintWriter(clientSocket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            System.out.println("Server is running on the port: " + port);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -37,6 +38,7 @@ public class Server implements Runnable {
             out.close();
             clientSocket.close();
             serverSocket.close();
+            System.out.println("Server stopped running.");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -44,7 +46,8 @@ public class Server implements Runnable {
 
     public void awaitTestMessage() {
         try {
-            System.out.println("received message: " + in.readLine());
+            String rcv = in.readLine();
+            System.out.println("received message: " + rcv);
             out.println("message received successfully, now go fuck yourself :)");
         } catch (IOException e) {
             e.printStackTrace();
