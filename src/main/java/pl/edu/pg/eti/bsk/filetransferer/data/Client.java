@@ -5,14 +5,23 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Scanner;
 
-public class Client {
+public class Client implements Runnable {
 
     private Socket clientSocket;
     private PrintWriter out;
     private BufferedReader in;
 
-    public void startConnection(String ip, int port) {
+    private String ip;
+    private int port;
+
+    public Client(String ip, int port){
+        this.ip = ip;
+        this.port = port;
+    }
+
+    public void startConnection() {
         try {
             clientSocket = new Socket(ip, port);
             out = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -41,6 +50,16 @@ public class Client {
             e.printStackTrace();
         }
         return "";
+    }
+
+    @Override
+    public void run() {
+        startConnection();
+        while(!Thread.interrupted()){
+            Scanner scanner = new Scanner(System.in);
+            sendTestMessage(scanner.nextLine());
+        }
+        stopConnection();
     }
 
 }

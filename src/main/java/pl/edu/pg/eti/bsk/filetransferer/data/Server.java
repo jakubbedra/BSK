@@ -7,14 +7,20 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class Server {
+public class Server implements Runnable {
 
     private ServerSocket serverSocket;
     private Socket clientSocket;
     private PrintWriter out;
     private BufferedReader in;
 
-    public void start(int port) {
+    private int port;
+
+    public Server(int port) {
+        this.port = port;
+    }
+
+    public void start() {
         try {
             serverSocket = new ServerSocket(port);
             clientSocket = serverSocket.accept();
@@ -43,6 +49,15 @@ public class Server {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void run() {
+        start();
+        while (!Thread.interrupted()) {
+            awaitTestMessage();
+        }
+        stop();
     }
 
 }
