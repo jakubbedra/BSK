@@ -81,7 +81,7 @@ public class DataReceiver implements Runnable {
         }
     }
 
-    public void awaitTextMessage() {
+    public void receiveTextMessage() {
         try {
             IvParameterSpec iv = new IvParameterSpec(Base64.getDecoder().decode(in.readLine()));
             String rcv = in.readLine();
@@ -100,13 +100,17 @@ public class DataReceiver implements Runnable {
         }
     }
 
+    private void receiveMessageHeader() {
+
+    }
+
     @Override
     public void run() {
         start();
         sendSessionKey();
         //System.out.println(Base64.getEncoder().encodeToString(sessionKey.getEncoded()));
         while (!Thread.interrupted()) {
-            awaitTextMessage();
+            receiveTextMessage();
         }
         stop();
     }

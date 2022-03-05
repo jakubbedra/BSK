@@ -1,6 +1,10 @@
 package pl.edu.pg.eti.bsk.filetransferer.data;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import pl.edu.pg.eti.bsk.filetransferer.Constants;
 import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
+import pl.edu.pg.eti.bsk.filetransferer.messages.MessageHeader;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -118,8 +122,14 @@ public class DataSender implements Runnable {
     /**
      * Method for sending the message header containing metadata
      */
-    private void sendMessageHeader() {
-
+    private void sendMessageHeader(MessageHeader header) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            String fileHeaderAsString = mapper.writeValueAsString(header);
+            encryptAndSendData(fileHeaderAsString.getBytes(StandardCharsets.UTF_8, "AES/CBC/PKCS5Padding"));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -132,8 +142,18 @@ public class DataSender implements Runnable {
     /**
      * Method for encoding and sending data
      */
-    private void sentData() {
-
+    private void encryptAndSendData(byte[] data, String algorithm, IvParameterSpec iv)
+            throws InvalidAlgorithmParameterException, NoSuchPaddingException,
+            IllegalBlockSizeException, NoSuchAlgorithmException,
+            BadPaddingException, InvalidKeyException {
+        String base64 = Base64.getEncoder().encodeToString(
+                EncryptionUtils.encryptAes(
+                        algorithm,
+                        data,
+                        receivedSessionKey,
+                        iv
+                ));
+        out.println(base64);
     }
 
     @Override
@@ -153,6 +173,13 @@ public class DataSender implements Runnable {
             i na podstawie tego DataReceiver dowiaduje sie czy ma do czynienia z file czy text
          */
         while (!Thread.interrupted()) {
+            sendMessageHeader(new MessageHeader(
+                    Constants.MESSAGE_TYPE_TEXT,
+                    Constants.ENCRYPTION_TYPE_CBC,
+                    0,
+                    "",
+                    ""
+            ));
             sendTextMessage(scanner.nextLine());
             //todo: choose message type
         }

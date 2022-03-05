@@ -22,7 +22,7 @@ public class MessageHeader {
     private byte encryptionMethod;
 
     /**
-     * Size of the message in bytes
+     * Size of the message in bytes (ignored in text messages)
      */
     private long messageSize;
 
