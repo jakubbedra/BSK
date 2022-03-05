@@ -26,4 +26,14 @@ public class MessageHeader {
      */
     private long messageSize;
 
+    /**
+     * Only for file messages, otherwise empty
+     */
+    private String fileExtension;
+
+    /**
+     * Only for file messages, otherwise empty
+     */
+    private String filename;
+
 }

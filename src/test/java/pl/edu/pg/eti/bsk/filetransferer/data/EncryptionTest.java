@@ -1,7 +1,7 @@
 package pl.edu.pg.eti.bsk.filetransferer.data;
 
 import org.junit.Test;
-import pl.edu.pg.eti.bsk.filetransferer.logic.AesEncryption;
+import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -21,13 +21,13 @@ public class EncryptionTest {
             IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
         String input = "sample text";
         String algorithm = "AES/CBC/PKCS5Padding";
-        IvParameterSpec iv = AesEncryption.generateIv();
-        SecretKey key = AesEncryption.generateKey(128);
+        IvParameterSpec iv = EncryptionUtils.generateIv();
+        SecretKey key = EncryptionUtils.generateSecretKey(128);
 
-        byte[] ciphertext = AesEncryption.encryptAes(
+        byte[] ciphertext = EncryptionUtils.encryptAes(
                 algorithm, input.getBytes(StandardCharsets.UTF_8), key, iv
         );
-        byte[] plaintext = AesEncryption.decryptAes(
+        byte[] plaintext = EncryptionUtils.decryptAes(
                 algorithm, ciphertext, key, iv
         );
         System.out.println(new String(ciphertext));

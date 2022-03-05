@@ -1,7 +1,5 @@
 package pl.edu.pg.eti.bsk.filetransferer;
 
-import pl.edu.pg.eti.bsk.filetransferer.data.Server;
-
 import java.util.Scanner;
 
 public class Main {
@@ -15,9 +13,6 @@ public class Main {
           port0, ip, port
         );
         cli.startServer();
-        System.out.println("press any key to connect");
-        Scanner scanner = new Scanner(System.in);
-        scanner.nextLine();
         cli.connect();
     }
 

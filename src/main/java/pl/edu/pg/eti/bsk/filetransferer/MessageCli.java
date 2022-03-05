@@ -1,16 +1,35 @@
 package pl.edu.pg.eti.bsk.filetransferer;
 
-import pl.edu.pg.eti.bsk.filetransferer.data.Client;
-import pl.edu.pg.eti.bsk.filetransferer.data.Server;
+import pl.edu.pg.eti.bsk.filetransferer.data.DataSender;
+import pl.edu.pg.eti.bsk.filetransferer.data.DataReceiver;
+import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
+
+import javax.crypto.SecretKey;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
 
 public class MessageCli {
 
     private Thread serverThread;
     private Thread clientThread;
 
+    private KeyPair rsaKeyPair;
+    private SecretKey sessionKey;
+
+    private static final int RSA_KEY_SIZE = 2048;
+    private static final int SECRET_KEY_SIZE = 256;
+
     public MessageCli(int port, String connectIp, int connectPort) {
-        serverThread = new Thread(new Server(port));
-        clientThread = new Thread(new Client(connectIp, connectPort));
+        try {
+            rsaKeyPair = EncryptionUtils.generateRsaKeyPair(RSA_KEY_SIZE);
+            sessionKey = EncryptionUtils.generateSecretKey(SECRET_KEY_SIZE);
+            serverThread = new Thread(new DataReceiver(port, sessionKey));
+            clientThread = new Thread(
+                    new DataSender(connectIp, connectPort, rsaKeyPair.getPublic(), rsaKeyPair.getPrivate())
+            );
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
     }
 
     public void startServer() {
