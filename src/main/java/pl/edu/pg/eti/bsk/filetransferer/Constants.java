@@ -18,4 +18,7 @@ public class Constants {
     public static final byte ENCRYPTION_TYPE_ECB = 1;
     public static final byte ENCRYPTION_TYPE_CBC = 2;
 
+    public static final String DEFAULT_UPLOAD_FILES_DIR = "C:\\Users\\theKonfyrm\\Desktop\\bsk-files-to-send";
+    public static final String DEFAULT_RECEIVED_FILES_DIR = "C:\\Users\\theKonfyrm\\Desktop\\bsk-received-files";
+
 }

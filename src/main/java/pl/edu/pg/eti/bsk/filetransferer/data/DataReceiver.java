@@ -1,6 +1,9 @@
 package pl.edu.pg.eti.bsk.filetransferer.data;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import pl.edu.pg.eti.bsk.filetransferer.Constants;
 import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
+import pl.edu.pg.eti.bsk.filetransferer.messages.MessageHeader;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -81,15 +84,25 @@ public class DataReceiver implements Runnable {
         }
     }
 
-    public void receiveTextMessage() {
+    public void receiveTextMessage(byte encryptionMethod) {
         try {
-            IvParameterSpec iv = new IvParameterSpec(Base64.getDecoder().decode(in.readLine()));
-            String rcv = in.readLine();
-            byte[] bytes = Base64.getDecoder().decode(rcv);
-            String msg = new String(
-                    EncryptionUtils.decryptAes("AES/CBC/PKCS5Padding", bytes, sessionKey, iv),
-                    StandardCharsets.UTF_8
-            );
+            String msg = "";
+            if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
+                IvParameterSpec iv = new IvParameterSpec(Base64.getDecoder().decode(in.readLine()));
+                String rcv = in.readLine();
+                byte[] bytes = Base64.getDecoder().decode(rcv);
+                msg = new String(
+                        EncryptionUtils.decryptAesCbc(bytes, sessionKey, iv),
+                        StandardCharsets.UTF_8
+                );
+            } else if (encryptionMethod == Constants.ENCRYPTION_TYPE_ECB) {
+                String rcv = in.readLine();
+                byte[] bytes = Base64.getDecoder().decode(rcv);
+                msg = new String(
+                        EncryptionUtils.decryptAesEcb(bytes, sessionKey),
+                        StandardCharsets.UTF_8
+                );
+            }
             System.out.println("received message: " + msg);
             //System.out.println("encrypted message: "+new String(Base64.getDecoder().decode(rcv)));
             out.println("ok");
@@ -100,8 +113,81 @@ public class DataReceiver implements Runnable {
         }
     }
 
-    private void receiveMessageHeader() {
+    private void receiveFile() {
+        try {
+            IvParameterSpec iv = new IvParameterSpec(Base64.getDecoder().decode(in.readLine()));
+            String rcv = in.readLine();
+            byte[] bytes = Base64.getDecoder().decode(rcv);
+            String filename = new String(
+                    EncryptionUtils.decryptAesCbc(bytes, sessionKey, iv),
+                    StandardCharsets.UTF_8
+            );
+            String samplePath = "C:\\Users\\theKonfyrm\\Desktop\\bsk-received-files\\";
+            File file = new File(samplePath + filename);
+            //reading the count
+            String countAsString = new String(
+                    receiveAndDecryptData(Constants.ENCRYPTION_TYPE_CBC, iv)
+            );
+            long count = Long.parseLong(countAsString);
+            System.out.println(count);
 
+            OutputStream fileOutput = new FileOutputStream(samplePath + filename);
+
+            byte[] buffer = new byte[Constants.BYTE_BUFFER_SIZE];
+            int lengthRead = 0;
+
+            for (long i = 0; i < count; i++) {
+                lengthRead = Integer.parseInt(
+                        new String(receiveAndDecryptData(Constants.ENCRYPTION_TYPE_CBC, iv), StandardCharsets.UTF_8)
+                );
+                buffer = receiveAndDecryptData(Constants.ENCRYPTION_TYPE_CBC, iv);
+                fileOutput.write(buffer, 0, lengthRead);
+                fileOutput.flush();
+            }
+            fileOutput.close();
+        } catch (IOException | InvalidAlgorithmParameterException |
+                NoSuchPaddingException | IllegalBlockSizeException |
+                NoSuchAlgorithmException | BadPaddingException | InvalidKeyException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private MessageHeader receiveMessageHeader() {
+        try {
+            String messageHeaderAsString = new String(
+                    Base64.getDecoder().decode(in.readLine()), StandardCharsets.UTF_8
+            );
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(messageHeaderAsString, MessageHeader.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private byte[] receiveAndDecryptData(byte encryptionMethod, IvParameterSpec iv) {
+        try {
+            if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
+                byte[] bytes = Base64.getDecoder().decode(in.readLine());
+                return EncryptionUtils.decryptAesCbc(bytes, sessionKey, iv);
+            } else if (encryptionMethod == Constants.ENCRYPTION_TYPE_ECB) {
+                byte[] bytes = Base64.getDecoder().decode(in.readLine());
+                return EncryptionUtils.decryptAesEcb(bytes, sessionKey);
+            }
+        } catch (IOException | InvalidAlgorithmParameterException |
+                NoSuchPaddingException | IllegalBlockSizeException |
+                NoSuchAlgorithmException | BadPaddingException | InvalidKeyException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private void receiveMessage(MessageHeader header) {
+        if (header.getMessageType() == Constants.MESSAGE_TYPE_TEXT) {
+            receiveTextMessage(header.getEncryptionMethod());
+        } else if (header.getMessageType() == Constants.MESSAGE_TYPE_FILE) {
+            receiveFile();
+        }
     }
 
     @Override
@@ -109,9 +195,12 @@ public class DataReceiver implements Runnable {
         start();
         sendSessionKey();
         //System.out.println(Base64.getEncoder().encodeToString(sessionKey.getEncoded()));
-        while (!Thread.interrupted()) {
-            receiveTextMessage();
-        }
+       // while (!Thread.interrupted()) {
+            MessageHeader header = receiveMessageHeader();
+            System.out.println(header);
+            //receiveMessage(header);
+            receiveFile();
+       // }
         stop();
     }
 

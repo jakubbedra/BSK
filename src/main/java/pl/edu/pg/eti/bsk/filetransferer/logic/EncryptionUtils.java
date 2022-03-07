@@ -7,21 +7,39 @@ import java.security.*;
 
 public class EncryptionUtils {
 
-    public static byte[] encryptAes(
-            String algorithm, byte[] plaintext, SecretKey key, IvParameterSpec iv
+    public static byte[] encryptAesCbc(
+            byte[] plaintext, SecretKey key, IvParameterSpec iv
     ) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
             InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        Cipher cipher = Cipher.getInstance(algorithm);
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipher.init(Cipher.ENCRYPT_MODE, key, iv);
         return cipher.doFinal(plaintext);
     }
 
-    public static byte[] decryptAes(
-            String algorithm, byte[] ciphertext, SecretKey key, IvParameterSpec iv
+    public static byte[] decryptAesCbc(
+            byte[] ciphertext, SecretKey key, IvParameterSpec iv
     ) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
             InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        Cipher cipher = Cipher.getInstance(algorithm);
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        return cipher.doFinal(ciphertext);
+    }
+
+    public static byte[] encryptAesEcb(
+            byte[] plaintext, SecretKey key
+    ) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
+            InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        return cipher.doFinal(plaintext);
+    }
+
+    public static byte[] decryptAesEcb(
+            byte[] ciphertext, SecretKey key
+    ) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
+            InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, key);
         return cipher.doFinal(ciphertext);
     }
 

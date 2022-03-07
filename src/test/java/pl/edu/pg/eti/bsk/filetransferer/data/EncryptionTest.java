@@ -20,15 +20,14 @@ public class EncryptionTest {
             throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
             IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
         String input = "sample text";
-        String algorithm = "AES/CBC/PKCS5Padding";
         IvParameterSpec iv = EncryptionUtils.generateIv();
         SecretKey key = EncryptionUtils.generateSecretKey(128);
 
-        byte[] ciphertext = EncryptionUtils.encryptAes(
-                algorithm, input.getBytes(StandardCharsets.UTF_8), key, iv
+        byte[] ciphertext = EncryptionUtils.encryptAesCbc(
+                input.getBytes(StandardCharsets.UTF_8), key, iv
         );
-        byte[] plaintext = EncryptionUtils.decryptAes(
-                algorithm, ciphertext, key, iv
+        byte[] plaintext = EncryptionUtils.decryptAesCbc(
+                ciphertext, key, iv
         );
         System.out.println(new String(ciphertext));
         System.out.println(new String(plaintext));

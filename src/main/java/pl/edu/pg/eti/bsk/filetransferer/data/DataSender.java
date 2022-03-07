@@ -16,6 +16,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.Scanner;
 
 public class DataSender implements Runnable {
@@ -83,20 +84,28 @@ public class DataSender implements Runnable {
         }
     }
 
-    private String sendTextMessage(String msg) {
+    private String sendTextMessage(byte encryptionMethod, String msg) {
         try {
-            IvParameterSpec iv = EncryptionUtils.generateIv();
-            String iv64 = Base64.getEncoder().encodeToString(iv.getIV());
-            out.println(iv64);
-            String base64 = Base64.getEncoder().encodeToString(
-                    EncryptionUtils.encryptAes(
-                            "AES/CBC/PKCS5Padding", msg.getBytes(StandardCharsets.UTF_8),
-                            receivedSessionKey,
-                            iv
-                    ));
+            String base64 = "";
+            if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
+                IvParameterSpec iv = EncryptionUtils.generateIv();
+                String iv64 = Base64.getEncoder().encodeToString(iv.getIV());
+                out.println(iv64);
+                base64 = Base64.getEncoder().encodeToString(
+                        EncryptionUtils.encryptAesCbc(
+                                msg.getBytes(StandardCharsets.UTF_8),
+                                receivedSessionKey,
+                                iv
+                        ));
+            } else {
+                base64 = Base64.getEncoder().encodeToString(
+                        EncryptionUtils.encryptAesEcb(
+                                msg.getBytes(StandardCharsets.UTF_8),
+                                receivedSessionKey
+                        ));
+            }
             out.println(base64);
-            String resp = in.readLine();
-            return resp;
+            return in.readLine();
         } catch (IOException | InvalidKeyException | BadPaddingException |
                 NoSuchAlgorithmException | IllegalBlockSizeException |
                 NoSuchPaddingException | InvalidAlgorithmParameterException e) {
@@ -106,17 +115,46 @@ public class DataSender implements Runnable {
     }
 
     private void sendFile(String path) {
-        //set default path to downloads
-        //check if file is too big to be sent without division
+        //sending the iv
         IvParameterSpec iv = EncryptionUtils.generateIv();
         String iv64 = Base64.getEncoder().encodeToString(iv.getIV());
         out.println(iv64);
-        String base64 = Base64.getEncoder().encodeToString(
-                EncryptionUtils.encryptAes(
-                        "AES/CBC/PKCS5Padding", msg.getBytes(StandardCharsets.UTF_8),
-                        receivedSessionKey,
+        //set default path to downloads
+        String sampleFile = "C:\\Users\\theKonfyrm\\Desktop\\bsk-files-to-send\\node-v16.13.2-x64.msi";
+        File fileToSend = new File(sampleFile);
+        try {
+            //sending the filename
+            encryptAndSendData(
+                    fileToSend.getName().getBytes(StandardCharsets.UTF_8),
+                    Constants.ENCRYPTION_TYPE_CBC,
+                    iv
+            );
+            //calculating and sending the number of messages that will be sent
+            String numberOfMessages = "" + (fileToSend.length() / (long) Constants.BYTE_BUFFER_SIZE);
+            encryptAndSendData(
+                    numberOfMessages.getBytes(StandardCharsets.UTF_8),
+                    Constants.ENCRYPTION_TYPE_CBC,
+                    iv
+            );
+            InputStream fileInputStream = new BufferedInputStream(new FileInputStream(fileToSend));
+
+            byte[] buffer = new byte[Constants.BYTE_BUFFER_SIZE];
+            int lengthRead = 0;
+            while ((lengthRead = fileInputStream.read(buffer)) > 0) {
+                //fileOutput.write(buffer, 0, lengthRead);
+                encryptAndSendData(
+                        (lengthRead + "").getBytes(StandardCharsets.UTF_8),
+                        Constants.ENCRYPTION_TYPE_CBC,
                         iv
-                ));
+                );
+                encryptAndSendData(buffer, Constants.ENCRYPTION_TYPE_CBC, iv);
+            }
+        } catch (IOException | InvalidAlgorithmParameterException |
+                NoSuchPaddingException | IllegalBlockSizeException |
+                NoSuchAlgorithmException | BadPaddingException | InvalidKeyException e) {
+            e.printStackTrace();
+        }
+
     }
 
     /**
@@ -125,35 +163,40 @@ public class DataSender implements Runnable {
     private void sendMessageHeader(MessageHeader header) {
         ObjectMapper mapper = new ObjectMapper();
         try {
-            String fileHeaderAsString = mapper.writeValueAsString(header);
-            encryptAndSendData(fileHeaderAsString.getBytes(StandardCharsets.UTF_8, "AES/CBC/PKCS5Padding"));
+            String messageHeaderAsString = mapper.writeValueAsString(header);
+//            encryptAndSendData(messageHeaderAsString.getBytes(StandardCharsets.UTF_8), "AES/CBC/PKCS5Padding", iv);
+            String header64 = Base64.getEncoder().encodeToString(
+                    messageHeaderAsString.getBytes(StandardCharsets.UTF_8)
+            );
+            out.println(header64);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
     }
 
     /**
-     * Method for sending the iv
-     */
-    private void sendIv() {
-
-    }
-
-    /**
      * Method for encoding and sending data
      */
-    private void encryptAndSendData(byte[] data, String algorithm, IvParameterSpec iv)
+    private void encryptAndSendData(byte[] data, byte encryptionMethod, IvParameterSpec iv)
             throws InvalidAlgorithmParameterException, NoSuchPaddingException,
             IllegalBlockSizeException, NoSuchAlgorithmException,
             BadPaddingException, InvalidKeyException {
-        String base64 = Base64.getEncoder().encodeToString(
-                EncryptionUtils.encryptAes(
-                        algorithm,
-                        data,
-                        receivedSessionKey,
-                        iv
-                ));
-        out.println(base64);
+        if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
+            String base64 = Base64.getEncoder().encodeToString(
+                    EncryptionUtils.encryptAesCbc(
+                            data,
+                            receivedSessionKey,
+                            iv
+                    ));
+            out.println(base64);
+        } else if (encryptionMethod == Constants.ENCRYPTION_TYPE_ECB) {
+            String base64 = Base64.getEncoder().encodeToString(
+                    EncryptionUtils.encryptAesEcb(
+                            data,
+                            receivedSessionKey
+                    ));
+            out.println(base64);
+        }
     }
 
     @Override
@@ -173,14 +216,17 @@ public class DataSender implements Runnable {
             i na podstawie tego DataReceiver dowiaduje sie czy ma do czynienia z file czy text
          */
         while (!Thread.interrupted()) {
-            sendMessageHeader(new MessageHeader(
+            String msg = scanner.nextLine();
+            MessageHeader header = new MessageHeader(
                     Constants.MESSAGE_TYPE_TEXT,
                     Constants.ENCRYPTION_TYPE_CBC,
                     0,
                     "",
                     ""
-            ));
-            sendTextMessage(scanner.nextLine());
+            );
+            sendMessageHeader(header);
+            //sendTextMessage(header.getEncryptionMethod(), msg);
+            sendFile("C:\\Users\\theKonfyrm\\Desktop\\bsk-files-to-send\\node-v16.13.2-x64.msi");
             //todo: choose message type
         }
         stopConnection();
