@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
 
 public class DataReceiver implements Runnable {
@@ -27,10 +28,10 @@ public class DataReceiver implements Runnable {
     private BufferedReader in;
 
     private int port;
-/*
-    private PublicKey receivedPublicKey;
-    private SecretKey sessionKey;
-*/
+    /*
+        private PublicKey receivedPublicKey;
+        private SecretKey sessionKey;
+    */
     private SynchronizedStorage storage;
 
     public DataReceiver(int port, SynchronizedStorage storage, SecretKey sessionKey) {
@@ -161,12 +162,6 @@ public class DataReceiver implements Runnable {
 
     private MessageHeader receiveMessageHeader() {
         try {
-            //String header64
-            //String messageHeaderAsString = new String(
-            //        Base64.getDecoder().decode(in.readLine()), StandardCharsets.UTF_8
-            //);
-            //ObjectMapper mapper = new ObjectMapper();
-            Base64.getDecoder().decode(in.readLine());//decoding from base64
             return EncryptionUtils.decryptMessageHeader(
                     Base64.getDecoder().decode(in.readLine()), storage.getPrivateKey()
             );
@@ -209,7 +204,7 @@ public class DataReceiver implements Runnable {
         //System.out.println(Base64.getEncoder().encodeToString(sessionKey.getEncoded()));
         while (!Thread.interrupted()) {
             MessageHeader header = receiveMessageHeader();
-            System.out.println(header);
+            //System.out.println(header);
             receiveMessage(header);
             //receiveFile();
         }

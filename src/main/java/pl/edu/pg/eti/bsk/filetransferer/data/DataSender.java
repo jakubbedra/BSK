@@ -213,14 +213,6 @@ public class DataSender implements Runnable {
         startConnection();
         receiveSessionKey();
 
-        //System.out.println(Base64.getEncoder().encodeToString(publicKey.getEncoded()));
-        /*
-            ogolnie bedzie to tak zrobione ze przekazujemy za pomoca
-            jakiegos sprytnego obiektu (synchronized collection czy cos i sprawdzamy czy cos sie pojawilo tam)
-            i na podstawie tego albo sendTextMessage() albo sendFile()
-            najpierw wgl wysylamy MessageHeader, mozemy go przerobic na .json tak wsm
-            i na podstawie tego DataReceiver dowiaduje sie czy ma do czynienia z file czy text
-         */
         while (!Thread.interrupted()) {
             String msg = scanner.nextLine();
 

@@ -1,5 +1,7 @@
 package pl.edu.pg.eti.bsk.filetransferer.data;
 
+import pl.edu.pg.eti.bsk.filetransferer.messages.MessageHeader;
+
 import javax.crypto.SecretKey;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -15,20 +17,30 @@ public class SynchronizedStorage {
     private Optional<PublicKey> receivedPublicKey;
     private Optional<SecretKey> receivedSessionKey;
 
+    private Optional<MessageHeader> header;
+
     public SynchronizedStorage(KeyPair keyPair, SecretKey sessionKey) {
         publicKey = keyPair.getPublic();
         privateKey = keyPair.getPrivate();
         this.sessionKey = sessionKey;
         receivedPublicKey = Optional.empty();
         receivedSessionKey = Optional.empty();
+        header = Optional.empty();
     }
 
-    public synchronized void putReceivedPublicKey(PublicKey receivedPublicKey){
+    public synchronized void putReceivedPublicKey(PublicKey receivedPublicKey) {
         this.receivedPublicKey = Optional.of(receivedPublicKey);
     }
 
-    public synchronized void putReceivedSessionKey(SecretKey sessionKey){
+    public synchronized void putReceivedSessionKey(SecretKey sessionKey) {
         this.receivedSessionKey = Optional.of(sessionKey);
+    }
+
+    /**
+     * Method used to take input metadata for the next message in the form of a header
+     */
+    public synchronized void putMessageHeader(MessageHeader header) {
+        this.header = Optional.of(header);
     }
 
     public synchronized PublicKey getPublicKey() {
@@ -44,13 +56,42 @@ public class SynchronizedStorage {
     }
 
     public synchronized PublicKey getReceivedPublicKey() {
-        while(receivedPublicKey.isEmpty()){}
+        while (receivedPublicKey.isEmpty()) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         return receivedPublicKey.get();
     }
 
     public synchronized SecretKey getReceivedSessionKey() {
-        while(receivedSessionKey.isEmpty()){}
+        while (receivedSessionKey.isEmpty()) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         return receivedSessionKey.get();
+    }
+
+    /**
+     * Method for taking (and removing) the last message header
+     * (might be changed to a collection later on instead of an optional)
+     */
+    public synchronized MessageHeader takeMessageHeader() {
+        while (header.isEmpty()){
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        MessageHeader header = this.header.get();
+        this.header = Optional.empty();
+        return header;
     }
 
 }
