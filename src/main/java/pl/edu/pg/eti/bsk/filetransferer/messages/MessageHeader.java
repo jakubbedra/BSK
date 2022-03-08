@@ -20,14 +20,14 @@ public class MessageHeader {
     private byte encryptionMethod;
 
     /**
+     * Initialization Vector
+     */
+    private byte[] iv;
+
+    /**
      * Size of the message in bytes (ignored in text messages)
      */
     private long messageSize;
-
-    /**
-     * Only for file messages, otherwise empty
-     */
-    private String fileExtension;
 
     /**
      * Only for file messages, otherwise empty

@@ -27,13 +27,16 @@ public class DataReceiver implements Runnable {
     private BufferedReader in;
 
     private int port;
-
+/*
     private PublicKey receivedPublicKey;
     private SecretKey sessionKey;
+*/
+    private SynchronizedStorage storage;
 
-    public DataReceiver(int port, SecretKey sessionKey) {
+    public DataReceiver(int port, SynchronizedStorage storage, SecretKey sessionKey) {
         this.port = port;
-        this.sessionKey = sessionKey;
+        this.storage = storage;
+//        this.sessionKey = sessionKey;
     }
 
     public void start() {
@@ -59,9 +62,13 @@ public class DataReceiver implements Runnable {
             byte[] publicKeyBytes = Base64.getDecoder().decode(in.readLine());
             System.out.println("Received public key.");
             KeyFactory kf = KeyFactory.getInstance("RSA");
-            receivedPublicKey = kf.generatePublic(new X509EncodedKeySpec(publicKeyBytes));
+            storage.putReceivedPublicKey(
+                    kf.generatePublic(new X509EncodedKeySpec(publicKeyBytes))
+            );
             //encode sessionKey with receivedPublicKey
-            byte[] encryptedSessionKey = EncryptionUtils.encryptSessionKey(sessionKey, receivedPublicKey);
+            byte[] encryptedSessionKey = EncryptionUtils.encryptSessionKey(
+                    storage.getSessionKey(), storage.getReceivedPublicKey()
+            );
             //send back encryptedSessionKey
             out.println(Base64.getEncoder().encodeToString(encryptedSessionKey));
             System.out.println("Session key sent.");
@@ -84,22 +91,22 @@ public class DataReceiver implements Runnable {
         }
     }
 
-    public void receiveTextMessage(byte encryptionMethod) {
+    public void receiveTextMessage(byte encryptionMethod, IvParameterSpec iv) {
         try {
             String msg = "";
             if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
-                IvParameterSpec iv = new IvParameterSpec(Base64.getDecoder().decode(in.readLine()));
+                //IvParameterSpec iv = new IvParameterSpec(Base64.getDecoder().decode(in.readLine()));
                 String rcv = in.readLine();
                 byte[] bytes = Base64.getDecoder().decode(rcv);
                 msg = new String(
-                        EncryptionUtils.decryptAesCbc(bytes, sessionKey, iv),
+                        EncryptionUtils.decryptAesCbc(bytes, storage.getSessionKey(), iv),
                         StandardCharsets.UTF_8
                 );
             } else if (encryptionMethod == Constants.ENCRYPTION_TYPE_ECB) {
                 String rcv = in.readLine();
                 byte[] bytes = Base64.getDecoder().decode(rcv);
                 msg = new String(
-                        EncryptionUtils.decryptAesEcb(bytes, sessionKey),
+                        EncryptionUtils.decryptAesEcb(bytes, storage.getSessionKey()),
                         StandardCharsets.UTF_8
                 );
             }
@@ -119,7 +126,7 @@ public class DataReceiver implements Runnable {
             String rcv = in.readLine();
             byte[] bytes = Base64.getDecoder().decode(rcv);
             String filename = new String(
-                    EncryptionUtils.decryptAesCbc(bytes, sessionKey, iv),
+                    EncryptionUtils.decryptAesCbc(bytes, storage.getSessionKey(), iv),
                     StandardCharsets.UTF_8
             );
             String samplePath = "C:\\Users\\theKonfyrm\\Desktop\\bsk-received-files\\";
@@ -154,12 +161,17 @@ public class DataReceiver implements Runnable {
 
     private MessageHeader receiveMessageHeader() {
         try {
-            String messageHeaderAsString = new String(
-                    Base64.getDecoder().decode(in.readLine()), StandardCharsets.UTF_8
+            //String header64
+            //String messageHeaderAsString = new String(
+            //        Base64.getDecoder().decode(in.readLine()), StandardCharsets.UTF_8
+            //);
+            //ObjectMapper mapper = new ObjectMapper();
+            Base64.getDecoder().decode(in.readLine());//decoding from base64
+            return EncryptionUtils.decryptMessageHeader(
+                    Base64.getDecoder().decode(in.readLine()), storage.getPrivateKey()
             );
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(messageHeaderAsString, MessageHeader.class);
-        } catch (IOException e) {
+        } catch (IOException | NoSuchPaddingException | IllegalBlockSizeException |
+                NoSuchAlgorithmException | BadPaddingException | InvalidKeyException e) {
             e.printStackTrace();
             return null;
         }
@@ -169,10 +181,10 @@ public class DataReceiver implements Runnable {
         try {
             if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
                 byte[] bytes = Base64.getDecoder().decode(in.readLine());
-                return EncryptionUtils.decryptAesCbc(bytes, sessionKey, iv);
+                return EncryptionUtils.decryptAesCbc(bytes, storage.getSessionKey(), iv);
             } else if (encryptionMethod == Constants.ENCRYPTION_TYPE_ECB) {
                 byte[] bytes = Base64.getDecoder().decode(in.readLine());
-                return EncryptionUtils.decryptAesEcb(bytes, sessionKey);
+                return EncryptionUtils.decryptAesEcb(bytes, storage.getSessionKey());
             }
         } catch (IOException | InvalidAlgorithmParameterException |
                 NoSuchPaddingException | IllegalBlockSizeException |
@@ -184,7 +196,7 @@ public class DataReceiver implements Runnable {
 
     private void receiveMessage(MessageHeader header) {
         if (header.getMessageType() == Constants.MESSAGE_TYPE_TEXT) {
-            receiveTextMessage(header.getEncryptionMethod());
+            receiveTextMessage(header.getEncryptionMethod(), new IvParameterSpec(header.getIv()));
         } else if (header.getMessageType() == Constants.MESSAGE_TYPE_FILE) {
             receiveFile();
         }
@@ -195,12 +207,12 @@ public class DataReceiver implements Runnable {
         start();
         sendSessionKey();
         //System.out.println(Base64.getEncoder().encodeToString(sessionKey.getEncoded()));
-       // while (!Thread.interrupted()) {
+        while (!Thread.interrupted()) {
             MessageHeader header = receiveMessageHeader();
             System.out.println(header);
-            //receiveMessage(header);
-            receiveFile();
-       // }
+            receiveMessage(header);
+            //receiveFile();
+        }
         stop();
     }
 

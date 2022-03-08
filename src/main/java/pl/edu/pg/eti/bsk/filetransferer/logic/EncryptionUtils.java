@@ -1,8 +1,13 @@
 package pl.edu.pg.eti.bsk.filetransferer.logic;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import pl.edu.pg.eti.bsk.filetransferer.messages.MessageHeader;
+
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 
 public class EncryptionUtils {
@@ -59,6 +64,28 @@ public class EncryptionUtils {
         decryptor.init(Cipher.DECRYPT_MODE, privateKey);
         byte[] sessionKeyBytes = decryptor.doFinal(ciphertext);
         return new SecretKeySpec(sessionKeyBytes, 0, sessionKeyBytes.length, "AES");
+    }
+
+    public static byte[] encryptMessageHeader(MessageHeader header, PublicKey publicKey)
+            throws NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException,
+            BadPaddingException, InvalidKeyException, JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        String messageHeaderAsString = mapper.writeValueAsString(header);
+        Cipher encryptor = Cipher.getInstance("RSA");
+        encryptor.init(Cipher.ENCRYPT_MODE, publicKey);
+        byte[] headerBytes = messageHeaderAsString.getBytes(StandardCharsets.UTF_8);
+        return encryptor.doFinal(headerBytes);
+    }
+
+    public static MessageHeader decryptMessageHeader(byte[] ciphertext, PrivateKey privateKey)
+            throws NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException,
+            BadPaddingException, InvalidKeyException, JsonProcessingException {
+        Cipher decryptor = Cipher.getInstance("RSA");
+        decryptor.init(Cipher.DECRYPT_MODE, privateKey);
+        byte[] headerBytes = decryptor.doFinal(ciphertext);
+        String messageHeaderAsString = new String(headerBytes, StandardCharsets.UTF_8);
+        ObjectMapper mapper = new ObjectMapper();
+        return mapper.readValue(messageHeaderAsString, MessageHeader.class);
     }
 
     public static IvParameterSpec generateIv() {
