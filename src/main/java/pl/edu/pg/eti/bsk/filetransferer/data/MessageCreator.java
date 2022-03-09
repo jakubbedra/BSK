@@ -14,21 +14,21 @@ public class MessageCreator {
         this.storage = storage;
     }
 
-    public void createTextMessage(String content, byte encryptionMethod) {
+    public MessageHeader createTextMessage(String content, byte encryptionMethod) {
         byte[] ivBytes = {};
         if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
             IvParameterSpec iv = EncryptionUtils.generateIv();
             ivBytes = iv.getIV();
         }
-        MessageHeader header = new MessageHeader(
+        return new MessageHeader(
                 Constants.MESSAGE_TYPE_TEXT,
                 encryptionMethod,
                 ivBytes,
                 content.length(),
                 ""
         );
-        storage.putMessageHeader(header);
-        storage.putTextMessage(content);
+        //storage.putMessageHeader(header);
+        //storage.putTextMessage(content);
     }
 
     public void createFileMessage(String filename, String fileDir, byte encryptionMethod) {

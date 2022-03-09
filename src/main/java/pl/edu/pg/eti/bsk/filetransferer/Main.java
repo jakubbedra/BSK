@@ -1,11 +1,13 @@
 package pl.edu.pg.eti.bsk.filetransferer;
 
-import java.util.Scanner;
+import pl.edu.pg.eti.bsk.filetransferer.ui.Gui;
 
 public class Main {
 
     public static void main(String[] args) {
-        int port0 = Integer.parseInt(args[0]);
+        Gui gui = new Gui();
+
+        /*int port0 = Integer.parseInt(args[0]);
         String ip = args[1];
         int port = Integer.parseInt(args[2]);
 
@@ -14,6 +16,7 @@ public class Main {
         );
         cli.startServer();
         cli.connect();
+        cli.run();*/
     }
 
 }

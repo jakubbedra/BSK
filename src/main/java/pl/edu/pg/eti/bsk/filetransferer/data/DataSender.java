@@ -2,6 +2,7 @@ package pl.edu.pg.eti.bsk.filetransferer.data;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 import pl.edu.pg.eti.bsk.filetransferer.Constants;
 import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
 import pl.edu.pg.eti.bsk.filetransferer.messages.MessageHeader;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.util.Base64;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataSender implements Runnable {
 
@@ -25,6 +27,9 @@ public class DataSender implements Runnable {
 
     private String ip;
     private int port;
+
+    @Getter
+    private AtomicInteger fileUploadProgress;
 
     /*
     private PublicKey publicKey;
@@ -38,6 +43,7 @@ public class DataSender implements Runnable {
         this.ip = ip;
         this.port = port;
         this.storage = storage;
+        fileUploadProgress = new AtomicInteger(100);
         //        this.publicKey = publicKey;
 //        this.privateKey = privateKey;
     }
@@ -168,7 +174,7 @@ public class DataSender implements Runnable {
     private void sendMessageHeader(MessageHeader header) {
         ObjectMapper mapper = new ObjectMapper();
         try {
-            String messageHeaderAsString = mapper.writeValueAsString(header);
+//            String messageHeaderAsString = mapper.writeValueAsString(header);
 //            encryptAndSendData(messageHeaderAsString.getBytes(StandardCharsets.UTF_8), "AES/CBC/PKCS5Padding", iv);
             String header64 = Base64.getEncoder().encodeToString(
                     EncryptionUtils.encryptMessageHeader(header, storage.getReceivedPublicKey())
@@ -205,32 +211,30 @@ public class DataSender implements Runnable {
         }
     }
 
+    public void sendTextMessage(MessageHeader header, String content) {
+        sendMessageHeader(header);
+        sendTextMessage(header.getEncryptionMethod(), content, new IvParameterSpec(header.getIv()));
+    }
+
     @Override
     public void run() {
         System.out.println("press any key to connect");
-        Scanner scanner = new Scanner(System.in);
-        scanner.nextLine();
+        //Scanner scanner = new Scanner(System.in);
+        //scanner.nextLine();
         startConnection();
         receiveSessionKey();
 
         while (!Thread.interrupted()) {
-            String msg = scanner.nextLine();
+            //String msg = scanner.nextLine();
 
             /**
              * move iv generation, so that it will be inside the header when we take it from storage
              */
-            IvParameterSpec iv = EncryptionUtils.generateIv();
 
             MessageHeader header =
                     storage.takeMessageHeader(); //taking the message header from storage
-            msg = storage.takeTextMessage();
-            new MessageHeader(
-                    Constants.MESSAGE_TYPE_TEXT,
-                    Constants.ENCRYPTION_TYPE_CBC,
-                    iv.getIV(),
-                    0,
-                    ""
-            );
+            String msg = storage.takeTextMessage();
+            System.out.println(msg+"xxxxxxxxxxxxxxxxxxx");
             sendMessageHeader(header);
             sendTextMessage(header.getEncryptionMethod(), msg, new IvParameterSpec(header.getIv()));
             //sendFile("C:\\Users\\theKonfyrm\\Desktop\\bsk-files-to-send\\node-v16.13.2-x64.msi");

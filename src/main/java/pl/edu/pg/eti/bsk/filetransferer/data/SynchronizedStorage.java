@@ -24,6 +24,9 @@ public class SynchronizedStorage {
     private Optional<MessageHeader> header;
     private Optional<String> textMessage;
 
+    //private Optional<String> lastReceivedText;
+    //private Optional<String> lastReceivedFile;
+
     public SynchronizedStorage(KeyPair keyPair, SecretKey sessionKey) {
         publicKey = keyPair.getPublic();
         privateKey = keyPair.getPrivate();
