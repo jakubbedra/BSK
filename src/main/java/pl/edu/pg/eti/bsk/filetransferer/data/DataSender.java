@@ -216,9 +216,15 @@ public class DataSender implements Runnable {
         while (!Thread.interrupted()) {
             String msg = scanner.nextLine();
 
+            /**
+             * move iv generation, so that it will be inside the header when we take it from storage
+             */
             IvParameterSpec iv = EncryptionUtils.generateIv();
 
-            MessageHeader header = new MessageHeader(
+            MessageHeader header =
+                    storage.takeMessageHeader(); //taking the message header from storage
+            msg = storage.takeTextMessage();
+            new MessageHeader(
                     Constants.MESSAGE_TYPE_TEXT,
                     Constants.ENCRYPTION_TYPE_CBC,
                     iv.getIV(),
@@ -226,7 +232,7 @@ public class DataSender implements Runnable {
                     ""
             );
             sendMessageHeader(header);
-            sendTextMessage(header.getEncryptionMethod(), msg, iv);
+            sendTextMessage(header.getEncryptionMethod(), msg, new IvParameterSpec(header.getIv()));
             //sendFile("C:\\Users\\theKonfyrm\\Desktop\\bsk-files-to-send\\node-v16.13.2-x64.msi");
             //todo: choose message type
         }

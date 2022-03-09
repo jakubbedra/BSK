@@ -25,12 +25,12 @@ public class MessageHeader {
     private byte[] iv;
 
     /**
-     * Size of the message in bytes (ignored in text messages)
+     * Size of the message in bytes
      */
     private long messageSize;
 
     /**
-     * Only for file messages, otherwise empty
+     * Contains the filename if message type is a file, otherwise empty
      */
     private String filename;
 

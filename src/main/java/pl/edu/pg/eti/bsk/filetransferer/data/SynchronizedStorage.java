@@ -1,5 +1,6 @@
 package pl.edu.pg.eti.bsk.filetransferer.data;
 
+import pl.edu.pg.eti.bsk.filetransferer.Constants;
 import pl.edu.pg.eti.bsk.filetransferer.messages.MessageHeader;
 
 import javax.crypto.SecretKey;
@@ -14,18 +15,33 @@ public class SynchronizedStorage {
     private PrivateKey privateKey;
     private SecretKey sessionKey;
 
+    private String receivedFilesDir;
+    private String filesToUploadDir;
+
     private Optional<PublicKey> receivedPublicKey;
     private Optional<SecretKey> receivedSessionKey;
 
     private Optional<MessageHeader> header;
+    private Optional<String> textMessage;
 
     public SynchronizedStorage(KeyPair keyPair, SecretKey sessionKey) {
         publicKey = keyPair.getPublic();
         privateKey = keyPair.getPrivate();
         this.sessionKey = sessionKey;
+        receivedFilesDir = Constants.DEFAULT_RECEIVED_FILES_DIR;
+        filesToUploadDir = Constants.DEFAULT_UPLOAD_FILES_DIR;
         receivedPublicKey = Optional.empty();
         receivedSessionKey = Optional.empty();
         header = Optional.empty();
+        textMessage = Optional.empty();
+    }
+
+    public synchronized void changeReceivedFilesDir(String receivedFilesDir) {
+        this.receivedFilesDir = receivedFilesDir;
+    }
+
+    public synchronized void changeFilesToUploadDir(String filesToUploadDir) {
+        this.filesToUploadDir = filesToUploadDir;
     }
 
     public synchronized void putReceivedPublicKey(PublicKey receivedPublicKey) {
@@ -41,6 +57,10 @@ public class SynchronizedStorage {
      */
     public synchronized void putMessageHeader(MessageHeader header) {
         this.header = Optional.of(header);
+    }
+
+    public synchronized void putTextMessage(String textMessage) {
+        this.textMessage = Optional.of(textMessage);
     }
 
     public synchronized PublicKey getPublicKey() {
@@ -77,12 +97,20 @@ public class SynchronizedStorage {
         return receivedSessionKey.get();
     }
 
+    public synchronized String getReceivedFilesDir() {
+        return receivedFilesDir;
+    }
+
+    public synchronized String getFilesToUploadDir() {
+        return filesToUploadDir;
+    }
+
     /**
      * Method for taking (and removing) the last message header
      * (might be changed to a collection later on instead of an optional)
      */
     public synchronized MessageHeader takeMessageHeader() {
-        while (header.isEmpty()){
+        while (header.isEmpty()) {
             try {
                 wait();
             } catch (InterruptedException e) {
@@ -92,6 +120,23 @@ public class SynchronizedStorage {
         MessageHeader header = this.header.get();
         this.header = Optional.empty();
         return header;
+    }
+
+    /**
+     * Method for taking (and removing) the last text message
+     * (might be changed to a collection later on instead of an optional)
+     */
+    public synchronized String takeTextMessage() {
+        while (textMessage.isEmpty()) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        String textMessage = this.textMessage.get();
+        this.textMessage = Optional.empty();
+        return textMessage;
     }
 
 }
