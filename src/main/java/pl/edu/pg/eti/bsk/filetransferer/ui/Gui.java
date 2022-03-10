@@ -208,25 +208,41 @@ public class Gui {
         l3.setBounds(10, 200 + 40, 140, 30);
         f.add(l3);
 
-        JTextField t3 = new JTextField();
+        JTextField t3 = new JTextField(Constants.DEFAULT_RECEIVED_FILES_DIR);
         t3.setBounds(10, 230 + 40, 240, 30);
         f.add(t3);
 
-        JButton b3 = new JButton("change");
+        ((DataReceiver)serverRunnable).setReceivedFilesDir(Constants.DEFAULT_RECEIVED_FILES_DIR);
+
+        JButton b3 = new JButton("SET");
         b3.setBounds(260, 230 + 40, 80, 30);
         f.add(b3);
+
+        b3.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                ((DataReceiver)serverRunnable).setReceivedFilesDir(t3.getText());
+            }
+        });
 
         JLabel l4 = new JLabel("files to upload dir:");
         l4.setBounds(10, 260 + 40, 140, 30);
         f.add(l4);
 
-        JTextField t4 = new JTextField();
+        JTextField t4 = new JTextField(Constants.DEFAULT_UPLOAD_FILES_DIR);
         t4.setBounds(10, 290 + 40, 240, 30);
         f.add(t4);
 
-        JButton b4 = new JButton("change");
+        JButton b4 = new JButton("SET");
         b4.setBounds(260, 290 + 40, 80, 30);
         f.add(b4);
+
+        b4.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                ((DataSender)clientRunnable).setFilesToUploadDir(t4.getText());
+            }
+        });
 //events--------------------------------------------------------
         JLabel a3 = new JLabel("last received text:");
         a3.setBounds(10, 300 + 40, 200, 69);
@@ -251,12 +267,15 @@ public class Gui {
                 String msg = t.getText();
                 if (!msg.equals("") && !t4.getText().equals("")) {
                     t.setText("");
-                    creator.createFileMessageHeader(
+                    ((DataSender) clientRunnable).sendFile(
+                            creator.createFileMessageHeader(
+                                    msg,
+                                    filesToUploadDir,
+                                    encryptionMethod
+                            ),
                             msg,
-                            filesToUploadDir,
-                            encryptionMethod
+                            t4.getText()
                     );
-                    ///SEND THE MESSAGE!!!!!!
                 }
             }
         });

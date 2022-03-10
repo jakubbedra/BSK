@@ -55,21 +55,6 @@ public class MessageCli {
         clientThread.start();
     }
 
-    public void run() {
-        Scanner scanner = new Scanner(System.in);
-        //while () {
-        //}
-
-        while (true) {
-            String msg = scanner.nextLine();
-            creator.createTextMessageHeader(msg, Constants.ENCRYPTION_TYPE_CBC);
-        }
-    }
-
-    public void createAndSendTextMessage(String msg, byte encryptionMethod) {
-        creator.createTextMessageHeader(msg, encryptionMethod);
-    }
-
     public void stopThreads() {
         //clientThread.interrupt();
         //serverThread.interrupt();

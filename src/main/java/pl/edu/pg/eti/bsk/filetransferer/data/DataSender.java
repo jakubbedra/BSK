@@ -2,7 +2,7 @@ package pl.edu.pg.eti.bsk.filetransferer.data;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Getter;
+import lombok.Setter;
 import pl.edu.pg.eti.bsk.filetransferer.Constants;
 import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
 import pl.edu.pg.eti.bsk.filetransferer.messages.MessageHeader;
@@ -16,8 +16,6 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.util.Base64;
-import java.util.Scanner;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataSender implements Runnable {
 
@@ -28,24 +26,19 @@ public class DataSender implements Runnable {
     private String ip;
     private int port;
 
-    @Getter
-    private AtomicInteger fileUploadProgress;
-
-    /*
-    private PublicKey publicKey;
-    private PrivateKey privateKey;
-    private SecretKey receivedSessionKey;
-*/
-
     private SynchronizedStorage storage;
+
+    @Setter
+    private String filesToUploadDir;
+
+    private int fileUploadProgress;
 
     public DataSender(String ip, int port, SynchronizedStorage storage, PublicKey publicKey, PrivateKey privateKey) {
         this.ip = ip;
         this.port = port;
         this.storage = storage;
-        fileUploadProgress = new AtomicInteger(100);
-        //        this.publicKey = publicKey;
-//        this.privateKey = privateKey;
+        fileUploadProgress = 100;
+        filesToUploadDir = Constants.DEFAULT_UPLOAD_FILES_DIR;
     }
 
     public void startConnection() {
@@ -69,7 +62,6 @@ public class DataSender implements Runnable {
      * Method for sending public key and receiving encrypted session key
      */
     private void receiveSessionKey() {
-        //out send publicKey
         try {
             System.out.println("Sending public key.");
             out.println(Base64.getEncoder().encodeToString(storage.getPublicKey().getEncoded()));
@@ -99,9 +91,6 @@ public class DataSender implements Runnable {
         try {
             String base64 = "";
             if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
-                //IvParameterSpec iv = EncryptionUtils.generateIv();
-                //String iv64 = Base64.getEncoder().encodeToString(iv.getIV());
-                //out.println(iv64);
                 base64 = Base64.getEncoder().encodeToString(
                         EncryptionUtils.encryptAesCbc(
                                 msg.getBytes(StandardCharsets.UTF_8),
@@ -125,33 +114,22 @@ public class DataSender implements Runnable {
         return "";
     }
 
-    private void sendFile(String path) {
-        //sending the iv
-        IvParameterSpec iv = EncryptionUtils.generateIv();
-        String iv64 = Base64.getEncoder().encodeToString(iv.getIV());
-        out.println(iv64);
-        //set default path to downloads
-        String sampleFile = "C:\\Users\\theKonfyrm\\Desktop\\bsk-files-to-send\\node-v16.13.2-x64.msi";
-        sampleFile = path;
-        File fileToSend = new File(sampleFile);
+    private void sendFile(String filename, IvParameterSpec iv) {
         try {
-            //sending the filename
-            encryptAndSendDataWithSessionKey(
-                    fileToSend.getName().getBytes(StandardCharsets.UTF_8),
-                    Constants.ENCRYPTION_TYPE_CBC,
-                    iv
-            );
+            File fileToSend = new File(filesToUploadDir + filename);
             //calculating and sending the number of messages that will be sent
             String numberOfMessages = "" + (fileToSend.length() / (long) Constants.BYTE_BUFFER_SIZE);
             encryptAndSendDataWithSessionKey(
                     numberOfMessages.getBytes(StandardCharsets.UTF_8),
-                    Constants.ENCRYPTION_TYPE_CBC,
+                    Constants.ENCRYPTION_TYPE_CBC,/////////////////////////////////////////////////////////////////////////
                     iv
             );
             InputStream fileInputStream = new BufferedInputStream(new FileInputStream(fileToSend));
 
             byte[] buffer = new byte[Constants.BYTE_BUFFER_SIZE];
             int lengthRead = 0;
+            System.out.println("iteration: ");
+            int i = 0;
             while ((lengthRead = fileInputStream.read(buffer)) > 0) {
                 //fileOutput.write(buffer, 0, lengthRead);
                 encryptAndSendDataWithSessionKey(
@@ -160,23 +138,20 @@ public class DataSender implements Runnable {
                         iv
                 );
                 encryptAndSendDataWithSessionKey(buffer, Constants.ENCRYPTION_TYPE_CBC, iv);
+                System.out.print(i + ","); i++;
             }
         } catch (IOException | InvalidAlgorithmParameterException |
                 NoSuchPaddingException | IllegalBlockSizeException |
                 NoSuchAlgorithmException | BadPaddingException | InvalidKeyException e) {
             e.printStackTrace();
         }
-
     }
 
     /**
      * Method for sending the message header containing metadata ciphered with received public key
      */
     private void sendMessageHeader(MessageHeader header) {
-        ObjectMapper mapper = new ObjectMapper();
         try {
-//            String messageHeaderAsString = mapper.writeValueAsString(header);
-//            encryptAndSendData(messageHeaderAsString.getBytes(StandardCharsets.UTF_8), "AES/CBC/PKCS5Padding", iv);
             String header64 = Base64.getEncoder().encodeToString(
                     EncryptionUtils.encryptMessageHeader(header, storage.getReceivedPublicKey())
             );
@@ -217,15 +192,20 @@ public class DataSender implements Runnable {
         sendTextMessage(header.getEncryptionMethod(), content, new IvParameterSpec(header.getIv()));
     }
 
+    public void sendFile(MessageHeader header, String filename, String path) {
+        sendMessageHeader(header);
+        sendFile(filename, new IvParameterSpec(header.getIv()));
+    }
+
     @Override
     public void run() {
         startConnection();
         receiveSessionKey();
 
-        while (!Thread.interrupted()) {
-            //do nothing, simply: run
-        }
-        stopConnection();
+//        while (true) {
+//            //do nothing, simply: run
+//        }
+        //stopConnection();
     }
 
 }

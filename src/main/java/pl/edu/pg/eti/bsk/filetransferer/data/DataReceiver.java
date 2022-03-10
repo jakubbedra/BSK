@@ -1,6 +1,6 @@
 package pl.edu.pg.eti.bsk.filetransferer.data;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Setter;
 import pl.edu.pg.eti.bsk.filetransferer.Constants;
 import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
 import pl.edu.pg.eti.bsk.filetransferer.messages.MessageHeader;
@@ -30,16 +30,17 @@ public class DataReceiver implements Runnable {
     private PrintWriter out;
     private BufferedReader in;
 
+    @Setter
+    private String receivedFilesDir;
+
     private int port;
-    /*
-        private PublicKey receivedPublicKey;
-        private SecretKey sessionKey;
-    */
+
     private SynchronizedStorage storage;
 
     public DataReceiver(int port, SynchronizedStorage storage, SecretKey sessionKey) {
         this.port = port;
         this.storage = storage;
+        receivedFilesDir = Constants.DEFAULT_RECEIVED_FILES_DIR;
 //        this.sessionKey = sessionKey;
     }
 
@@ -125,17 +126,8 @@ public class DataReceiver implements Runnable {
         }
     }
 
-    private void receiveFile() {
+    private void receiveFile(String filename, IvParameterSpec iv) {
         try {
-            IvParameterSpec iv = new IvParameterSpec(Base64.getDecoder().decode(in.readLine()));
-            String rcv = in.readLine();
-            byte[] bytes = Base64.getDecoder().decode(rcv);
-            String filename = new String(
-                    EncryptionUtils.decryptAesCbc(bytes, storage.getSessionKey(), iv),
-                    StandardCharsets.UTF_8
-            );
-            String samplePath = "C:\\Users\\theKonfyrm\\Desktop\\bsk-received-files\\";
-            File file = new File(samplePath + filename);
             //reading the count
             String countAsString = new String(
                     receiveAndDecryptData(Constants.ENCRYPTION_TYPE_CBC, iv)
@@ -143,7 +135,7 @@ public class DataReceiver implements Runnable {
             long count = Long.parseLong(countAsString);
             System.out.println(count);
 
-            OutputStream fileOutput = new FileOutputStream(samplePath + filename);
+            OutputStream fileOutput = new FileOutputStream(receivedFilesDir + filename);
 
             byte[] buffer = new byte[Constants.BYTE_BUFFER_SIZE];
             int lengthRead = 0;
@@ -155,11 +147,10 @@ public class DataReceiver implements Runnable {
                 buffer = receiveAndDecryptData(Constants.ENCRYPTION_TYPE_CBC, iv);
                 fileOutput.write(buffer, 0, lengthRead);
                 fileOutput.flush();
+                System.out.print(i+",");
             }
             fileOutput.close();
-        } catch (IOException | InvalidAlgorithmParameterException |
-                NoSuchPaddingException | IllegalBlockSizeException |
-                NoSuchAlgorithmException | BadPaddingException | InvalidKeyException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -197,7 +188,7 @@ public class DataReceiver implements Runnable {
         if (header.getMessageType() == Constants.MESSAGE_TYPE_TEXT) {
             receiveTextMessage(header.getEncryptionMethod(), new IvParameterSpec(header.getIv()));
         } else if (header.getMessageType() == Constants.MESSAGE_TYPE_FILE) {
-            receiveFile();
+            receiveFile(header.getFilename(), new IvParameterSpec(header.getIv()));
         }
     }
 
