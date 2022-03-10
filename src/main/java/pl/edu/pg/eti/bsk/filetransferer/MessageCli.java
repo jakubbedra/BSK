@@ -2,7 +2,7 @@ package pl.edu.pg.eti.bsk.filetransferer;
 
 import pl.edu.pg.eti.bsk.filetransferer.data.DataSender;
 import pl.edu.pg.eti.bsk.filetransferer.data.DataReceiver;
-import pl.edu.pg.eti.bsk.filetransferer.data.MessageCreator;
+import pl.edu.pg.eti.bsk.filetransferer.data.MessageHeaderCreator;
 import pl.edu.pg.eti.bsk.filetransferer.data.SynchronizedStorage;
 import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
 
@@ -21,7 +21,7 @@ public class MessageCli {
 
     private SynchronizedStorage storage;
 
-    private MessageCreator creator;
+    private MessageHeaderCreator creator;
 
     private static final int RSA_KEY_SIZE = 2048;
     private static final int SECRET_KEY_SIZE = 256;
@@ -37,7 +37,7 @@ public class MessageCli {
             clientRunnable = new DataSender(
                     connectIp, connectPort, storage, rsaKeyPair.getPublic(), rsaKeyPair.getPrivate()
             );
-            creator = new MessageCreator(storage);
+            creator = new MessageHeaderCreator(storage);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
@@ -62,12 +62,12 @@ public class MessageCli {
 
         while (true) {
             String msg = scanner.nextLine();
-            creator.createTextMessage(msg, Constants.ENCRYPTION_TYPE_CBC);
+            creator.createTextMessageHeader(msg, Constants.ENCRYPTION_TYPE_CBC);
         }
     }
 
     public void createAndSendTextMessage(String msg, byte encryptionMethod) {
-        creator.createTextMessage(msg, encryptionMethod);
+        creator.createTextMessageHeader(msg, encryptionMethod);
     }
 
     public void stopThreads() {

@@ -10,6 +10,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
+import javax.swing.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -17,10 +18,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Arrays;
 import java.util.Base64;
 
 public class DataReceiver implements Runnable {
+
+    private JLabel lastReceivedText;
+    private JLabel lastReceivedFile;
 
     private ServerSocket serverSocket;
     private Socket clientSocket;
@@ -112,6 +115,7 @@ public class DataReceiver implements Runnable {
                 );
             }
             System.out.println("received message: " + msg);
+            lastReceivedText.setText(msg);
             //System.out.println("encrypted message: "+new String(Base64.getDecoder().decode(rcv)));
             out.println("ok");
         } catch (IOException | InvalidKeyException | BadPaddingException |
@@ -197,16 +201,18 @@ public class DataReceiver implements Runnable {
         }
     }
 
+    public void setLabels(JLabel lastReceivedFile, JLabel lastReceivedText) {
+        this.lastReceivedFile = lastReceivedFile;
+        this.lastReceivedText = lastReceivedText;
+    }
+
     @Override
     public void run() {
         start();
         sendSessionKey();
-        //System.out.println(Base64.getEncoder().encodeToString(sessionKey.getEncoded()));
         while (!Thread.interrupted()) {
             MessageHeader header = receiveMessageHeader();
-            //System.out.println(header);
             receiveMessage(header);
-            //receiveFile();
         }
         stop();
     }

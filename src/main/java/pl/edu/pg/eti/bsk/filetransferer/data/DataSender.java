@@ -132,6 +132,7 @@ public class DataSender implements Runnable {
         out.println(iv64);
         //set default path to downloads
         String sampleFile = "C:\\Users\\theKonfyrm\\Desktop\\bsk-files-to-send\\node-v16.13.2-x64.msi";
+        sampleFile = path;
         File fileToSend = new File(sampleFile);
         try {
             //sending the filename
@@ -218,27 +219,11 @@ public class DataSender implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("press any key to connect");
-        //Scanner scanner = new Scanner(System.in);
-        //scanner.nextLine();
         startConnection();
         receiveSessionKey();
 
         while (!Thread.interrupted()) {
-            //String msg = scanner.nextLine();
-
-            /**
-             * move iv generation, so that it will be inside the header when we take it from storage
-             */
-
-            MessageHeader header =
-                    storage.takeMessageHeader(); //taking the message header from storage
-            String msg = storage.takeTextMessage();
-            System.out.println(msg+"xxxxxxxxxxxxxxxxxxx");
-            sendMessageHeader(header);
-            sendTextMessage(header.getEncryptionMethod(), msg, new IvParameterSpec(header.getIv()));
-            //sendFile("C:\\Users\\theKonfyrm\\Desktop\\bsk-files-to-send\\node-v16.13.2-x64.msi");
-            //todo: choose message type
+            //do nothing, simply: run
         }
         stopConnection();
     }

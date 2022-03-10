@@ -6,15 +6,15 @@ import pl.edu.pg.eti.bsk.filetransferer.messages.MessageHeader;
 
 import javax.crypto.spec.IvParameterSpec;
 
-public class MessageCreator {
+public class MessageHeaderCreator {
 
     private SynchronizedStorage storage;
 
-    public MessageCreator(SynchronizedStorage storage) {
+    public MessageHeaderCreator(SynchronizedStorage storage) {
         this.storage = storage;
     }
 
-    public MessageHeader createTextMessage(String content, byte encryptionMethod) {
+    public MessageHeader createTextMessageHeader(String content, byte encryptionMethod) {
         byte[] ivBytes = {};
         if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
             IvParameterSpec iv = EncryptionUtils.generateIv();
@@ -27,29 +27,22 @@ public class MessageCreator {
                 content.length(),
                 ""
         );
-        //storage.putMessageHeader(header);
-        //storage.putTextMessage(content);
     }
 
-    public void createFileMessage(String filename, String fileDir, byte encryptionMethod) {
+    public MessageHeader createFileMessageHeader(String filename, String fileDir, byte encryptionMethod) {
         storage.changeFilesToUploadDir(fileDir);
         byte[] ivBytes = {};
         if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
             IvParameterSpec iv = EncryptionUtils.generateIv();
             ivBytes = iv.getIV();
         }
-        MessageHeader header = new MessageHeader(
+        return new MessageHeader(
                 Constants.MESSAGE_TYPE_FILE,
                 encryptionMethod,
                 ivBytes,
                 filename.length(),//hmmmm
                 filename
         );
-        storage.putMessageHeader(header);
-    }
-
-    public void changeReceivedFilesDir(String receivedFilesDir) {
-        storage.changeReceivedFilesDir(receivedFilesDir);
     }
 
 }

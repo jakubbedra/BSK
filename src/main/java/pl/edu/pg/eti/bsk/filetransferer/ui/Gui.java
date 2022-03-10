@@ -1,10 +1,9 @@
 package pl.edu.pg.eti.bsk.filetransferer.ui;
 
 import pl.edu.pg.eti.bsk.filetransferer.Constants;
-import pl.edu.pg.eti.bsk.filetransferer.MessageCli;
 import pl.edu.pg.eti.bsk.filetransferer.data.DataReceiver;
 import pl.edu.pg.eti.bsk.filetransferer.data.DataSender;
-import pl.edu.pg.eti.bsk.filetransferer.data.MessageCreator;
+import pl.edu.pg.eti.bsk.filetransferer.data.MessageHeaderCreator;
 import pl.edu.pg.eti.bsk.filetransferer.data.SynchronizedStorage;
 import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
 
@@ -25,7 +24,10 @@ public class Gui {
 
     private SynchronizedStorage storage;
 
-    private MessageCreator creator;
+    private MessageHeaderCreator creator;
+
+    private String receivedFilesDir;
+    private String filesToUploadDir;
 
     private static final int RSA_KEY_SIZE = 2048;
     private static final int SECRET_KEY_SIZE = 256;
@@ -39,7 +41,7 @@ public class Gui {
             storage = new SynchronizedStorage(
                     rsaKeyPair, sessionKey
             );
-            creator = new MessageCreator(storage);
+            creator = new MessageHeaderCreator(storage);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
@@ -146,16 +148,6 @@ public class Gui {
         b1.setBounds(260, 10 + 40, 80, 30);
         f.add(b1);
 
-        b1.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String msg = t.getText();
-                if (!msg.equals("")) {
-                    t.setText("");
-                }
-            }
-        });
-
         JProgressBar p1 = new JProgressBar();
         p1.setBounds(10, 52 + 40, 330, 20);
         p1.setMaximum(100);
@@ -185,8 +177,8 @@ public class Gui {
                 System.out.println(msg);
                 if (!msg.equals("")) {
                     a1.setText("");
-                    ((DataSender)clientRunnable).sendTextMessage(
-                            creator.createTextMessage(msg, encryptionMethod),
+                    ((DataSender) clientRunnable).sendTextMessage(
+                            creator.createTextMessageHeader(msg, encryptionMethod),
                             msg
                     );
                 }
@@ -251,6 +243,26 @@ public class Gui {
         JLabel a4 = new JLabel("nothing to show yet...");
         a4.setBounds(10, 420 + 40, 300, 69);
         f.add(a4);
+
+
+        b1.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String msg = t.getText();
+                if (!msg.equals("") && !t4.getText().equals("")) {
+                    t.setText("");
+                    creator.createFileMessageHeader(
+                            msg,
+                            filesToUploadDir,
+                            encryptionMethod
+                    );
+                    ///SEND THE MESSAGE!!!!!!
+                }
+            }
+        });
+
+
+        ((DataReceiver) serverRunnable).setLabels(a4, a2);
 
         f.setSize(400, 560);
         f.setLayout(null);
