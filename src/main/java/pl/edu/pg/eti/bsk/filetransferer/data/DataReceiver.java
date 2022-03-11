@@ -126,11 +126,11 @@ public class DataReceiver implements Runnable {
         }
     }
 
-    private void receiveFile(String filename, IvParameterSpec iv) {
+    private void receiveFile(String filename, IvParameterSpec iv, byte encryptionMethod) {
         try {
             //reading the count
             String countAsString = new String(
-                    receiveAndDecryptData(Constants.ENCRYPTION_TYPE_CBC, iv)
+                    receiveAndDecryptData(encryptionMethod, iv)
             );
             long count = Long.parseLong(countAsString);
             System.out.println(count);
@@ -142,13 +142,14 @@ public class DataReceiver implements Runnable {
 
             for (long i = 0; i < count; i++) {
                 lengthRead = Integer.parseInt(
-                        new String(receiveAndDecryptData(Constants.ENCRYPTION_TYPE_CBC, iv), StandardCharsets.UTF_8)
+                        new String(receiveAndDecryptData(encryptionMethod, iv), StandardCharsets.UTF_8)
                 );
-                buffer = receiveAndDecryptData(Constants.ENCRYPTION_TYPE_CBC, iv);
+                buffer = receiveAndDecryptData(encryptionMethod, iv);
                 fileOutput.write(buffer, 0, lengthRead);
                 fileOutput.flush();
-                System.out.print(i+",");
+                //System.out.print(i+",");
             }
+            lastReceivedFile.setText(filename);
             fileOutput.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -188,7 +189,7 @@ public class DataReceiver implements Runnable {
         if (header.getMessageType() == Constants.MESSAGE_TYPE_TEXT) {
             receiveTextMessage(header.getEncryptionMethod(), new IvParameterSpec(header.getIv()));
         } else if (header.getMessageType() == Constants.MESSAGE_TYPE_FILE) {
-            receiveFile(header.getFilename(), new IvParameterSpec(header.getIv()));
+            receiveFile(header.getFilename(), new IvParameterSpec(header.getIv()), header.getEncryptionMethod());
         }
     }
 

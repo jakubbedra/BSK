@@ -1,7 +1,6 @@
 package pl.edu.pg.eti.bsk.filetransferer.data;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Setter;
 import pl.edu.pg.eti.bsk.filetransferer.Constants;
 import pl.edu.pg.eti.bsk.filetransferer.logic.EncryptionUtils;
@@ -11,6 +10,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
+import javax.swing.*;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +18,11 @@ import java.security.*;
 import java.util.Base64;
 
 public class DataSender implements Runnable {
+
+    @Setter
+    private JProgressBar progressBar;
+    @Setter
+    private JLabel progressLabel;
 
     private Socket clientSocket;
     private PrintWriter out;
@@ -114,32 +119,48 @@ public class DataSender implements Runnable {
         return "";
     }
 
-    private void sendFile(String filename, IvParameterSpec iv) {
+    private void sendFile(String filename, IvParameterSpec iv, byte encryptionMethod) {
         try {
             File fileToSend = new File(filesToUploadDir + filename);
             //calculating and sending the number of messages that will be sent
-            String numberOfMessages = "" + (fileToSend.length() / (long) Constants.BYTE_BUFFER_SIZE);
+            String numberOfMessagesAsString = "" + (fileToSend.length() / (long) Constants.BYTE_BUFFER_SIZE);
             encryptAndSendDataWithSessionKey(
-                    numberOfMessages.getBytes(StandardCharsets.UTF_8),
-                    Constants.ENCRYPTION_TYPE_CBC,/////////////////////////////////////////////////////////////////////////
+                    numberOfMessagesAsString.getBytes(StandardCharsets.UTF_8),
+                    encryptionMethod,
                     iv
             );
             InputStream fileInputStream = new BufferedInputStream(new FileInputStream(fileToSend));
 
             byte[] buffer = new byte[Constants.BYTE_BUFFER_SIZE];
-            int lengthRead = 0;
-            System.out.println("iteration: ");
-            int i = 0;
-            while ((lengthRead = fileInputStream.read(buffer)) > 0) {
-                //fileOutput.write(buffer, 0, lengthRead);
-                encryptAndSendDataWithSessionKey(
-                        (lengthRead + "").getBytes(StandardCharsets.UTF_8),
-                        Constants.ENCRYPTION_TYPE_CBC,
-                        iv
-                );
-                encryptAndSendDataWithSessionKey(buffer, Constants.ENCRYPTION_TYPE_CBC, iv);
-                System.out.print(i + ","); i++;
-            }
+            SwingWorker<Void, Integer> worker = new SwingWorker<Void, Integer>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    int lengthRead = 0;
+                    long sentMessages = 0;
+                    progressBar.setValue(0);
+                    progressBar.setMaximum(100);
+                    progressLabel.setText("Sending "+filename+": 0%");
+
+                    while ((lengthRead = fileInputStream.read(buffer)) > 0) {
+                        encryptAndSendDataWithSessionKey(
+                                (lengthRead + "").getBytes(StandardCharsets.UTF_8),
+                                encryptionMethod,
+                                iv
+                        );
+                        encryptAndSendDataWithSessionKey(buffer, encryptionMethod, iv);
+                        sentMessages++;
+                        double numberOfMessages = (double)sentMessages / (double)(fileToSend.length() / (long) Constants.BYTE_BUFFER_SIZE);
+                        int dupa = (int)(numberOfMessages*100.0);
+                        progressBar.setValue(dupa);
+                        progressLabel.setText("Sending "+filename+": "+dupa+"%");
+                        publish(dupa);
+                    }
+                    progressBar.setValue(100);
+                    progressLabel.setText("Sending "+filename+": 100%");
+                    return null;
+                }
+            };
+            worker.execute();
         } catch (IOException | InvalidAlgorithmParameterException |
                 NoSuchPaddingException | IllegalBlockSizeException |
                 NoSuchAlgorithmException | BadPaddingException | InvalidKeyException e) {
@@ -192,9 +213,9 @@ public class DataSender implements Runnable {
         sendTextMessage(header.getEncryptionMethod(), content, new IvParameterSpec(header.getIv()));
     }
 
-    public void sendFile(MessageHeader header, String filename, String path) {
+    public void sendFile(MessageHeader header, String filename, JFrame f) {
         sendMessageHeader(header);
-        sendFile(filename, new IvParameterSpec(header.getIv()));
+        sendFile(filename, new IvParameterSpec(header.getIv()), header.getEncryptionMethod());
     }
 
     @Override
@@ -202,10 +223,10 @@ public class DataSender implements Runnable {
         startConnection();
         receiveSessionKey();
 
-//        while (true) {
-//            //do nothing, simply: run
-//        }
-        //stopConnection();
+        while (Thread.interrupted()) {
+            //do nothing, simply: run
+        }
+        stopConnection();
     }
 
 }

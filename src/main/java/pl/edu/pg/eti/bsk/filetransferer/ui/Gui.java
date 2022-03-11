@@ -13,6 +13,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 public class Gui {
 
@@ -151,12 +152,16 @@ public class Gui {
         JProgressBar p1 = new JProgressBar();
         p1.setBounds(10, 52 + 40, 330, 20);
         p1.setMaximum(100);
-        p1.setValue(100);
+        p1.setValue(0);
         f.add(p1);
 
+        ((DataSender)clientRunnable).setProgressBar(p1);
+
         JLabel pl = new JLabel("Sending dupa.txt: 100%");
-        pl.setBounds(10, 74 + 40, 169, 30);
+        pl.setBounds(10, 74 + 40, 369, 30);
         f.add(pl);
+
+        ((DataSender)clientRunnable).setProgressLabel(pl);
 
         JLabel l2 = new JLabel("text:");
         l2.setBounds(10, 120 + 40, 40, 30);
@@ -265,6 +270,7 @@ public class Gui {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String msg = t.getText();
+                //b1.setEnabled(false);
                 if (!msg.equals("") && !t4.getText().equals("")) {
                     t.setText("");
                     ((DataSender) clientRunnable).sendFile(
@@ -274,7 +280,7 @@ public class Gui {
                                     encryptionMethod
                             ),
                             msg,
-                            t4.getText()
+                            f
                     );
                 }
             }
@@ -287,11 +293,6 @@ public class Gui {
         f.setLayout(null);
         f.setVisible(true);
         f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        //updating stuff (move to sender and receiver, ugly but will work)
-//    while (true) {
-
-//    }
     }
 
 }
