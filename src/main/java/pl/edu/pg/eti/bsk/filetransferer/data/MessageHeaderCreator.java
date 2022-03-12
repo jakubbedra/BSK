@@ -14,7 +14,7 @@ public class MessageHeaderCreator {
         this.storage = storage;
     }
 
-    public MessageHeader createTextMessageHeader(String content, byte encryptionMethod) {
+    public MessageHeader createTextMessageHeader(byte encryptionMethod) {
         byte[] ivBytes = {};
         if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
             IvParameterSpec iv = EncryptionUtils.generateIv();
@@ -24,13 +24,11 @@ public class MessageHeaderCreator {
                 Constants.MESSAGE_TYPE_TEXT,
                 encryptionMethod,
                 ivBytes,
-                content.length(),
                 ""
         );
     }
 
-    public MessageHeader createFileMessageHeader(String filename, String fileDir, byte encryptionMethod) {
-        storage.changeFilesToUploadDir(fileDir);
+    public MessageHeader createFileMessageHeader(String filename, byte encryptionMethod) {
         byte[] ivBytes = {};
         if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
             IvParameterSpec iv = EncryptionUtils.generateIv();
@@ -40,7 +38,6 @@ public class MessageHeaderCreator {
                 Constants.MESSAGE_TYPE_FILE,
                 encryptionMethod,
                 ivBytes,
-                filename.length(),//hmmmm
                 filename
         );
     }

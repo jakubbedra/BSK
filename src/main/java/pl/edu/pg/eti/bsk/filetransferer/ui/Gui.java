@@ -13,7 +13,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
-import java.util.List;
 
 public class Gui {
 
@@ -35,8 +34,11 @@ public class Gui {
 
     private byte encryptionMethod;
 
-    public Gui() {
+    private boolean timeTestMode;
+
+    public Gui(boolean timeTestMode) {
         try {
+            this.timeTestMode = timeTestMode;
             rsaKeyPair = EncryptionUtils.generateRsaKeyPair(RSA_KEY_SIZE);
             sessionKey = EncryptionUtils.generateSecretKey(SECRET_KEY_SIZE);
             storage = new SynchronizedStorage(
@@ -120,7 +122,7 @@ public class Gui {
                     Thread clientThread = new Thread(clientRunnable);
                     clientThread.setDaemon(true);
                     clientThread.start();
-
+                    ((DataSender)clientRunnable).setTestTransferSpeed(timeTestMode);
                     f.setVisible(false);
                     initMessagesGui();
                 }
@@ -155,13 +157,13 @@ public class Gui {
         p1.setValue(0);
         f.add(p1);
 
-        ((DataSender)clientRunnable).setProgressBar(p1);
+        ((DataSender) clientRunnable).setProgressBar(p1);
 
-        JLabel pl = new JLabel("Sending dupa.txt: 100%");
+        JLabel pl = new JLabel("");
         pl.setBounds(10, 74 + 40, 369, 30);
         f.add(pl);
 
-        ((DataSender)clientRunnable).setProgressLabel(pl);
+        ((DataSender) clientRunnable).setProgressLabel(pl);
 
         JLabel l2 = new JLabel("text:");
         l2.setBounds(10, 120 + 40, 40, 30);
@@ -183,7 +185,7 @@ public class Gui {
                 if (!msg.equals("")) {
                     a1.setText("");
                     ((DataSender) clientRunnable).sendTextMessage(
-                            creator.createTextMessageHeader(msg, encryptionMethod),
+                            creator.createTextMessageHeader(encryptionMethod),
                             msg
                     );
                 }
@@ -207,7 +209,6 @@ public class Gui {
             }
         });
 
-        //-------------dirs
 
         JLabel l3 = new JLabel("received files dir:");
         l3.setBounds(10, 200 + 40, 140, 30);
@@ -217,7 +218,7 @@ public class Gui {
         t3.setBounds(10, 230 + 40, 240, 30);
         f.add(t3);
 
-        ((DataReceiver)serverRunnable).setReceivedFilesDir(Constants.DEFAULT_RECEIVED_FILES_DIR);
+        ((DataReceiver) serverRunnable).setReceivedFilesDir(Constants.DEFAULT_RECEIVED_FILES_DIR);
 
         JButton b3 = new JButton("SET");
         b3.setBounds(260, 230 + 40, 80, 30);
@@ -226,7 +227,7 @@ public class Gui {
         b3.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ((DataReceiver)serverRunnable).setReceivedFilesDir(t3.getText());
+                ((DataReceiver) serverRunnable).setReceivedFilesDir(t3.getText());
             }
         });
 
@@ -245,16 +246,16 @@ public class Gui {
         b4.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ((DataSender)clientRunnable).setFilesToUploadDir(t4.getText());
+                ((DataSender) clientRunnable).setFilesToUploadDir(t4.getText());
             }
         });
-//events--------------------------------------------------------
         JLabel a3 = new JLabel("last received text:");
-        a3.setBounds(10, 300 + 40, 200, 69);
+        a3.setBounds(10, 320 + 40, 200, 30);
         f.add(a3);
 
         JLabel a2 = new JLabel("nothing to show yet...");
-        a2.setBounds(10, 320 + 40, 300, 69);
+        a2.setBounds(10, 340 + 40, 400, 69);
+
         f.add(a2);
 
         JLabel a5 = new JLabel("last received file:");
@@ -270,13 +271,11 @@ public class Gui {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String msg = t.getText();
-                //b1.setEnabled(false);
                 if (!msg.equals("") && !t4.getText().equals("")) {
                     t.setText("");
                     ((DataSender) clientRunnable).sendFile(
                             creator.createFileMessageHeader(
                                     msg,
-                                    filesToUploadDir,
                                     encryptionMethod
                             ),
                             msg,
