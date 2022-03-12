@@ -14,6 +14,7 @@ import javax.swing.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
@@ -27,8 +28,9 @@ public class DataReceiver implements Runnable {
 
     private ServerSocket serverSocket;
     private Socket clientSocket;
-    private PrintWriter out;
-    private BufferedReader in;
+
+    private OutputStream out;
+    private InputStream in;
 
     @Setter
     private String receivedFilesDir;
@@ -41,7 +43,6 @@ public class DataReceiver implements Runnable {
         this.port = port;
         this.storage = storage;
         receivedFilesDir = Constants.DEFAULT_RECEIVED_FILES_DIR;
-//        this.sessionKey = sessionKey;
     }
 
     public void start() {
@@ -49,9 +50,10 @@ public class DataReceiver implements Runnable {
             System.out.println("Server is running on the port: " + port);
             serverSocket = new ServerSocket(port);
             clientSocket = serverSocket.accept();
-            out = new PrintWriter(clientSocket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            out.println("ok");
+
+            out = clientSocket.getOutputStream();
+            in = clientSocket.getInputStream();
+            out.write("ok".getBytes(StandardCharsets.UTF_8), 0, 2);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -64,7 +66,9 @@ public class DataReceiver implements Runnable {
         //in read public key
         try {
             System.out.println("Waiting for public key.");
-            byte[] publicKeyBytes = Base64.getDecoder().decode(in.readLine());
+            int rcv = readInt();
+            byte[] publicKeyBytes = new byte[Constants.BYTE_BUFFER_SIZE];
+            in.read(publicKeyBytes, 0, rcv);
             System.out.println("Received public key.");
             KeyFactory kf = KeyFactory.getInstance("RSA");
             storage.putReceivedPublicKey(
@@ -75,7 +79,10 @@ public class DataReceiver implements Runnable {
                     storage.getSessionKey(), storage.getReceivedPublicKey()
             );
             //send back encryptedSessionKey
-            out.println(Base64.getEncoder().encodeToString(encryptedSessionKey));
+            int length = encryptedSessionKey.length;
+            writeInt(length);
+            out.write(encryptedSessionKey, 0, length);
+            out.flush();
             System.out.println("Session key sent.");
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException |
                 InvalidKeyException | BadPaddingException | IllegalBlockSizeException |
@@ -99,26 +106,25 @@ public class DataReceiver implements Runnable {
     public void receiveTextMessage(byte encryptionMethod, IvParameterSpec iv) {
         try {
             String msg = "";
+            int size = readInt();
             if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
-                //IvParameterSpec iv = new IvParameterSpec(Base64.getDecoder().decode(in.readLine()));
-                String rcv = in.readLine();
-                byte[] bytes = Base64.getDecoder().decode(rcv);
+                byte[] bytes = new byte[size];
+                in.read(bytes, 0, size);
                 msg = new String(
                         EncryptionUtils.decryptAesCbc(bytes, storage.getSessionKey(), iv),
                         StandardCharsets.UTF_8
                 );
             } else if (encryptionMethod == Constants.ENCRYPTION_TYPE_ECB) {
-                String rcv = in.readLine();
-                byte[] bytes = Base64.getDecoder().decode(rcv);
+                byte[] bytes = new byte[size];
+                in.read(bytes, 0, size);
                 msg = new String(
                         EncryptionUtils.decryptAesEcb(bytes, storage.getSessionKey()),
                         StandardCharsets.UTF_8
                 );
             }
             System.out.println("received message: " + msg);
-            lastReceivedText.setText(msg);
-            //System.out.println("encrypted message: "+new String(Base64.getDecoder().decode(rcv)));
-            out.println("ok");
+            lastReceivedText.setText("<html>"+msg.replace("\n", "<br/>")+"</html>");
+            out.write("ok".getBytes(StandardCharsets.UTF_8), 0, 2);
         } catch (IOException | InvalidKeyException | BadPaddingException |
                 NoSuchAlgorithmException | IllegalBlockSizeException |
                 NoSuchPaddingException | InvalidAlgorithmParameterException e) {
@@ -133,8 +139,6 @@ public class DataReceiver implements Runnable {
                     receiveAndDecryptData(encryptionMethod, iv)
             );
             long count = Long.parseLong(countAsString);
-            System.out.println(count);
-
             OutputStream fileOutput = new FileOutputStream(receivedFilesDir + filename);
 
             byte[] buffer = new byte[Constants.BYTE_BUFFER_SIZE];
@@ -147,7 +151,6 @@ public class DataReceiver implements Runnable {
                 buffer = receiveAndDecryptData(encryptionMethod, iv);
                 fileOutput.write(buffer, 0, lengthRead);
                 fileOutput.flush();
-                //System.out.print(i+",");
             }
             lastReceivedFile.setText(filename);
             fileOutput.close();
@@ -158,8 +161,11 @@ public class DataReceiver implements Runnable {
 
     private MessageHeader receiveMessageHeader() {
         try {
+            int size = readInt();
+            byte[] messageHeaderBytes = new byte[size];
+            in.read(messageHeaderBytes, 0, size);
             return EncryptionUtils.decryptMessageHeader(
-                    Base64.getDecoder().decode(in.readLine()), storage.getPrivateKey()
+                    messageHeaderBytes, storage.getPrivateKey()
             );
         } catch (IOException | NoSuchPaddingException | IllegalBlockSizeException |
                 NoSuchAlgorithmException | BadPaddingException | InvalidKeyException e) {
@@ -168,13 +174,31 @@ public class DataReceiver implements Runnable {
         }
     }
 
+    private int readInt() throws IOException {
+        byte[] intBytes = new byte[4];
+        in.read(intBytes, 0, 4);
+        ByteBuffer wrapped = ByteBuffer.wrap(intBytes, 0, 4);
+        return wrapped.getInt();
+    }
+
+    private void writeInt(int i) throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        buffer.putInt(i);
+        byte[] intBytes = buffer.array();
+        out.write(intBytes, 0, 4);
+    }
+
     private byte[] receiveAndDecryptData(byte encryptionMethod, IvParameterSpec iv) {
         try {
             if (encryptionMethod == Constants.ENCRYPTION_TYPE_CBC) {
-                byte[] bytes = Base64.getDecoder().decode(in.readLine());
+                int size = readInt();
+                byte[] bytes = new byte[size];
+                in.read(bytes, 0, size);
                 return EncryptionUtils.decryptAesCbc(bytes, storage.getSessionKey(), iv);
             } else if (encryptionMethod == Constants.ENCRYPTION_TYPE_ECB) {
-                byte[] bytes = Base64.getDecoder().decode(in.readLine());
+                int size = readInt();
+                byte[] bytes = new byte[size];
+                in.read(bytes, 0, size);
                 return EncryptionUtils.decryptAesEcb(bytes, storage.getSessionKey());
             }
         } catch (IOException | InvalidAlgorithmParameterException |
